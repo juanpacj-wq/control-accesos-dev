@@ -47,8 +47,7 @@ export interface RecaptchaVerifyResponse {
 /**
  * Verifica un token de reCAPTCHA v3 con la API de Google
  * Esta función es para uso del cliente (llama al endpoint local)
- * 
- * @param token - Token generado por reCAPTCHA en el cliente
+ * * @param token - Token generado por reCAPTCHA en el cliente
  * @param action - Acción esperada para la verificación
  * @param minScore - Puntuación mínima aceptable (0.0 a 1.0)
  * @returns Objeto con el resultado de la verificación
@@ -129,8 +128,7 @@ export async function verifyRecaptchaToken(
 /**
  * Verifica un token de reCAPTCHA directamente desde el servidor
  * Esta función debe ser llamada solo desde el servidor (API routes)
- * 
- * @param token - Token generado por reCAPTCHA en el cliente
+ * * @param token - Token generado por reCAPTCHA en el cliente
  * @param secretKey - Clave secreta de reCAPTCHA (requerida)
  * @returns Respuesta completa de la API de reCAPTCHA
  */
@@ -223,8 +221,7 @@ export async function verifyRecaptchaTokenServer(
 
 /**
  * Función auxiliar para validar el formato de un token reCAPTCHA
- * 
- * @param token - Token a validar
+ * * @param token - Token a validar
  * @returns true si el token tiene un formato válido
  */
 export function isValidRecaptchaToken(token: string): boolean {
@@ -246,8 +243,7 @@ export function isValidRecaptchaToken(token: string): boolean {
 /**
  * Función para obtener información del dominio desde el hostname
  * Útil para verificar que el token viene del dominio correcto
- * 
- * @param hostname - Hostname reportado por reCAPTCHA
+ * * @param hostname - Hostname reportado por reCAPTCHA
  * @returns true si el hostname es válido para esta aplicación
  */
 export function isValidHostname(hostname?: string): boolean {
@@ -295,9 +291,15 @@ export const getRecaptchaConfig = () => {
 };
 
 /**
- * Función para verificar si reCAPTCHA está configurado correctamente
+ * Función para verificar si reCAPTCHA está configurado correctamente.
+ * Se adapta para verificar solo la clave pública en el cliente.
  */
 export function isRecaptchaConfigured(): boolean {
+  if (typeof window !== 'undefined') {
+    // En el lado del cliente, solo necesitamos la SITE KEY
+    return !!RECAPTCHA_SITE_KEY;
+  }
+  // En el lado del servidor, necesitamos ambas claves
   return !!(RECAPTCHA_SITE_KEY && RECAPTCHA_SECRET_KEY);
 }
 
