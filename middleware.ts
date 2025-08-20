@@ -19,7 +19,15 @@ const rateLimitExcludedPaths = [
   '/favicon.ico',
   '/logo.png',
   '/nav.png',
-  '/fondo.png'
+  '/fondo.png',
+  '/calendario.json',
+  '/CAC_LIMITE_SEG_SOCIAL.json'
+]
+
+// Rutas de API que están exentas de verificación CSRF
+const csrfExemptPaths = [
+  '/api/pila/',
+  '/api/documentos/consultar'
 ]
 
 export function middleware(request: NextRequest) {
@@ -116,7 +124,10 @@ export function middleware(request: NextRequest) {
   }
 
   // Protección CSRF para métodos que modifican estado
-  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(request.method)) {
+  // Excluir rutas específicas de la verificación CSRF
+  const isCSRFExempt = csrfExemptPaths.some(exemptPath => path.startsWith(exemptPath));
+  
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(request.method) && !isCSRFExempt) {
     const origin = request.headers.get('origin')
     const host = request.headers.get('host')
     
@@ -125,13 +136,15 @@ export function middleware(request: NextRequest) {
       const expectedOrigins = [
         `https://${host}`,
         `http://${host}`,
-        process.env.NEXT_PUBLIC_APP_URL
+        process.env.NEXT_PUBLIC_APP_URL,
+        'http://localhost:3000', // Para desarrollo
       ].filter(Boolean)
       
+      // En producción, ser más estricto con los orígenes
       if (!expectedOrigins.some(expected => origin === expected)) {
-        console.warn(`CSRF protection: Invalid origin ${origin} for host ${host}`)
+        console.warn(`CSRF protection: Invalid origin ${origin} for host ${host} on path ${path}`)
         
-        // En producción, podrías querer bloquear estas peticiones
+        // Solo bloquear en producción y para rutas no exentas
         if (process.env.NODE_ENV === 'production') {
           const response = NextResponse.json(
             { error: 'Invalid request origin' },
@@ -151,14 +164,14 @@ export function middleware(request: NextRequest) {
   }
 
   // Log de seguridad para monitoreo (en producción, usar un servicio de logging)
-  if (process.env.NODE_ENV === 'production') {
-    // Log básico de acceso
+  if (process.env.NODE_ENV === 'production' && path.startsWith('/api/')) {
+    // Log básico de acceso para APIs
     console.log({
       timestamp: new Date().toISOString(),
       method: request.method,
       path: request.nextUrl.pathname,
       ip: request.ip || request.headers.get('x-forwarded-for') || 'unknown',
-      userAgent: request.headers.get('user-agent'),
+      userAgent: request.headers.get('user-agent')?.substring(0, 50),
       authenticated: isAuthenticated
     })
   }

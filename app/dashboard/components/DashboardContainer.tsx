@@ -3,7 +3,7 @@
 
 import { useEffect } from "react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CheckCircle2, FileSpreadsheet } from "lucide-react"
+import { CheckCircle2, FileSpreadsheet, FileUp } from "lucide-react"
 import { useDashboardData } from "../hooks/useDashboardData"
 import Sidebar from "../modules/layout/Sidebar"
 import Header, { RegistrosSummary } from "../modules/layout/Header"
@@ -12,6 +12,7 @@ import PersonaTable from "../modules/personas/PersonaTable"
 import VehiculoTable from "../modules/vehiculos/VehiculoTable"
 import TerminarSolicitudDialog from "./TerminarSolicitudDialog"
 import CargaMasivaDialog from "./CargaMasivaDialog"
+import CargaPILADialog from "./CargaPILADialog"
 import AddEditDialog from "./AddEditDialog"
 
 export default function DashboardContainer() {
@@ -29,6 +30,7 @@ export default function DashboardContainer() {
     filtroEstado,
     setFiltroEstado,
     showCargaMasivaSuccess,
+    showPILASuccess,
     isSolicitudTerminada,
     fechaTerminacion,
     handleLogout,
@@ -37,6 +39,7 @@ export default function DashboardContainer() {
     handleEditPersona,
     handleEditVehiculo,
     handleOpenCargaMasiva,
+    handleOpenPILA,
     handleShowTerminarDialog
   } = useDashboardData()
 
@@ -73,6 +76,16 @@ export default function DashboardContainer() {
               <CheckCircle2 className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-700">
                 Cargue masivo realizado correctamente. Para ver las personas cargadas debes esperar unos minutos.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Notificación de carga PILA exitosa */}
+          {showPILASuccess && (
+            <Alert className="bg-green-50 border-green-200 mb-3">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-700">
+                PILA cargado correctamente. La planilla estará disponible una vez finalice el procesamiento.
               </AlertDescription>
             </Alert>
           )}
@@ -128,15 +141,27 @@ export default function DashboardContainer() {
           {/* Footer: botón a la izq. y texto a la der. + botón de carga masiva */}
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {/* Botón de carga masiva - solo visible en la sección de personas */}
+              {/* Botones solo visibles en la sección de personas */}
               {tipoIngreso === "persona" && (
-                <button
-                  onClick={handleOpenCargaMasiva}
-                  className="h-6 px-2 text-xs flex items-center gap-1 border border-blue-300 rounded-md text-blue-700 hover:bg-blue-50"
-                >
-                  <FileSpreadsheet className="w-3 h-3" />
-                  Carga masiva
-                </button>
+                <>
+                  {/* Botón de carga masiva */}
+                  <button
+                    onClick={handleOpenCargaMasiva}
+                    className="h-6 px-2 text-xs flex items-center gap-1 border border-blue-300 rounded-md text-blue-700 hover:bg-blue-50"
+                  >
+                    <FileSpreadsheet className="w-3 h-3" />
+                    Carga masiva
+                  </button>
+                  
+                  {/* Botón de carga PILA (nuevo) */}
+                  <button
+                    onClick={handleOpenPILA}
+                    className="h-6 px-2 text-xs flex items-center gap-1 border border-green-300 rounded-md text-green-700 hover:bg-green-50"
+                  >
+                    <FileUp className="w-3 h-3" />
+                    Cargar PILA
+                  </button>
+                </>
               )}
               <span className="text-xs text-gray-600">
                 {isSolicitudTerminada ? 
@@ -158,6 +183,7 @@ export default function DashboardContainer() {
       {/* Diálogos */}
       <AddEditDialog />
       <CargaMasivaDialog />
+      <CargaPILADialog />
       <TerminarSolicitudDialog />
     </div>
   )

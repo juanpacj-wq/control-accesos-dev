@@ -35,11 +35,17 @@ export function DashboardProvider({ children, idSolicitud }: DashboardProviderPr
   const [currentPersona, setCurrentPersona] = useState<PersonaRegistro | null>(null)
   const [currentVehiculo, setCurrentVehiculo] = useState<VehiculoRegistro | null>(null)
   
-  // Nuevo estado para el popup de carga masiva
+  // Estado para el popup de carga masiva
   const [isCargaMasivaOpen, setIsCargaMasivaOpen] = useState(false)
   
-  // Nuevo estado para mostrar notificación después de carga masiva
+  // Estado para el popup de carga PILA (nuevo)
+  const [isPILAOpen, setIsPILAOpen] = useState(false)
+  
+  // Estado para mostrar notificación después de carga masiva
   const [showCargaMasivaSuccess, setShowCargaMasivaSuccess] = useState(false)
+  
+  // Estado para mostrar notificación después de carga PILA (nuevo)
+  const [showPILASuccess, setShowPILASuccess] = useState(false)
   
   // Estados para manejar la terminación de solicitud
   const [isSolicitudTerminada, setIsSolicitudTerminada] = useState(false)
@@ -162,11 +168,25 @@ export function DashboardProvider({ children, idSolicitud }: DashboardProviderPr
   }
 
   // Formatear fecha
-  const formatearFecha = (fechaIso: string) => {
-    if (!fechaIso) return '';
-    const fecha = new Date(fechaIso);
-    return fecha.toLocaleDateString('es-CO') + ' ' + fecha.toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'});
-  };
+   function formatearFecha(fechaIso: string) {
+      if (!fechaIso) return '';
+      const s = String(fechaIso);
+
+      // Caso 1: viene como 'YYYY-MM-DD' (o con tiempo pero queremos respetar la fecha del servidor)
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) {
+        const y = m[1], mo = m[2], d = m[3];
+        return d + '/' + mo + '/' + y; // dd/mm/yyyy para es-CO
+      }
+
+      // Caso 2: cualquier otro formato -> usar Intl con zona UTC para evitar restar horas
+      try {
+        const dt = new Date(s);
+        return new Intl.DateTimeFormat('es-CO', { timeZone: 'UTC' }).format(dt);
+      } catch (e) {
+        return s;
+      }
+    };
 
   // Función para terminar la solicitud
   const handleTerminarSolicitud = async () => {
@@ -238,8 +258,12 @@ export function DashboardProvider({ children, idSolicitud }: DashboardProviderPr
       setCurrentVehiculo,
       isCargaMasivaOpen,
       setIsCargaMasivaOpen,
+      isPILAOpen,
+      setIsPILAOpen,
       showCargaMasivaSuccess,
       setShowCargaMasivaSuccess,
+      showPILASuccess,
+      setShowPILASuccess,
       isSolicitudTerminada,
       showTerminarDialog,
       setShowTerminarDialog,

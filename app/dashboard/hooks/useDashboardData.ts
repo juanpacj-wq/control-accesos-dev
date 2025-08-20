@@ -32,6 +32,11 @@ export function useDashboardData() {
     context.setIsCargaMasivaOpen(true)
   }
 
+  // Manejador para abrir el diálogo de carga PILA
+  const handleOpenPILA = () => {
+    context.setIsPILAOpen(true)
+  }
+
   // Manejador para editar una persona
   const handleEditPersona = (persona: PersonaRegistro) => {
     context.setEditMode(true)
@@ -79,6 +84,18 @@ export function useDashboardData() {
     }, 5000)
   }
 
+  // Función para manejar el éxito de la carga PILA
+  const handlePILASuccess = () => {
+    context.fetchPersonas()
+    context.setIsPILAOpen(false)
+    context.setShowPILASuccess(true)
+    
+    // Ocultar la notificación después de 5 segundos
+    setTimeout(() => {
+      context.setShowPILASuccess(false)
+    }, 5000)
+  }
+
   // Función para mostrar el diálogo de terminar solicitud
   const handleShowTerminarDialog = () => {
     context.setShowTerminarDialog(true)
@@ -89,10 +106,12 @@ export function useDashboardData() {
     handleLogout,
     handleOpenDialog,
     handleOpenCargaMasiva,
+    handleOpenPILA,
     handleEditPersona,
     handleEditVehiculo,
     handleCloseDialog,
     handleCargaMasivaSuccess,
+    handlePILASuccess,
     handleShowTerminarDialog,
   }
 }

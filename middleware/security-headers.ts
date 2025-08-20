@@ -13,32 +13,64 @@ export const securityHeaders = {
   'X-Content-Type-Options': 'nosniff',
   
   // Protección contra clickjacking
-  'X-Frame-Options': 'DENY',
+  'X-Frame-Options': 'SAMEORIGIN', // Cambiado de DENY a SAMEORIGIN para reCAPTCHA
   
   // Política de referrer para proteger información sensible
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   
   // Permisos del navegador (cámara, micrófono, etc.)
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
   
-  // Content Security Policy (CSP) - Configuración estricta
+  // Content Security Policy (CSP) - Configuración mejorada para reCAPTCHA
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://docs.google.com https://drive.google.com",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https:",
-    "font-src 'self' data:",
-    "connect-src 'self' https://gecelca.sharepoint.com https://docs.google.com https://drive.google.com",
+    // Script sources - añadidos dominios necesarios para reCAPTCHA
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
+      "https://www.google.com/recaptcha/ " +
+      "https://www.gstatic.com/recaptcha/ " +
+      "https://www.google.com/ " +
+      "https://www.gstatic.com/ " +
+      "https://cdnjs.cloudflare.com " +
+      "https://docs.google.com " +
+      "https://drive.google.com",
+    // Style sources
+    "style-src 'self' 'unsafe-inline' " +
+      "https://www.google.com/recaptcha/ " +
+      "https://www.gstatic.com/recaptcha/ " +
+      "https://www.gstatic.com",
+    // Image sources
+    "img-src 'self' data: blob: https: " +
+      "https://www.google.com/recaptcha/ " +
+      "https://www.gstatic.com/recaptcha/ " +
+      "https://www.gstatic.com",
+    // Font sources
+    "font-src 'self' data: " +
+      "https://www.gstatic.com/recaptcha/ " +
+      "https://www.gstatic.com",
+    // Connect sources - añadido recaptcha
+    "connect-src 'self' " +
+      "https://www.google.com/recaptcha/ " +
+      "https://www.google.com/ " +
+      "https://gecelca.sharepoint.com " +
+      "https://docs.google.com " +
+      "https://drive.google.com",
     "media-src 'self'",
     "object-src 'none'",
-    "frame-src 'self' https://docs.google.com https://drive.google.com",
-    "frame-ancestors 'none'",
+    // Frame sources - actualizado para reCAPTCHA
+    "frame-src 'self' " +
+      "https://www.google.com/recaptcha/ " +
+      "https://recaptcha.google.com/recaptcha/ " +
+      "https://www.google.com/ " +
+      "https://docs.google.com " +
+      "https://drive.google.com",
+    "frame-ancestors 'self'", // Permitir frames desde el mismo origen
     "base-uri 'self'",
-    "form-action 'self'",
+    "form-action 'self' https://www.google.com/recaptcha/",
     "manifest-src 'self'",
     "worker-src 'self' blob:",
-    "upgrade-insecure-requests"
-  ].join('; '),
+    // No forzar HTTPS en desarrollo
+    ...(process.env.NODE_ENV === 'production' ? ["upgrade-insecure-requests"] : [])
+  ].filter(Boolean).join('; '),
   
   // Strict Transport Security (HSTS) - Solo para producción
   ...(process.env.NODE_ENV === 'production' && {
@@ -62,6 +94,7 @@ export const securityHeaders = {
 
 /**
  * Headers específicos para las API routes
+ * Ahora usando variables de entorno para el dominio
  */
 export const apiSecurityHeaders = {
   'X-Content-Type-Options': 'nosniff',
@@ -70,12 +103,12 @@ export const apiSecurityHeaders = {
   'Referrer-Policy': 'no-referrer',
   'X-Permitted-Cross-Domain-Policies': 'none',
   
-  // CORS headers restrictivos para API
+  // CORS headers restrictivos para API - usando variable de entorno
   'Access-Control-Allow-Origin': process.env.NODE_ENV === 'production' 
-    ? process.env.NEXT_PUBLIC_APP_URL || 'https://tu-dominio.com'
+    ? (process.env.NEXT_PUBLIC_APP_URL || 'https://gacc.gecelca.com.co')
     : 'http://localhost:3000',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
   'Access-Control-Max-Age': '86400',
   'Access-Control-Allow-Credentials': 'true'
 };
@@ -116,31 +149,36 @@ export function validateRequestHeaders(request: NextRequest): boolean {
   const userAgent = request.headers.get('user-agent') || '';
   const suspiciousAgents = ['bot', 'crawler', 'spider', 'scraper'];
   
-  if (suspiciousAgents.some(agent => userAgent.toLowerCase().includes(agent))) {
+  // Excluir Google Bot para reCAPTCHA y bots de monitoreo conocidos
+  const allowedBots = ['google', 'recaptcha', 'uptimerobot', 'pingdom'];
+  const isAllowedBot = allowedBots.some(bot => userAgent.toLowerCase().includes(bot));
+  
+  if (!isAllowedBot && suspiciousAgents.some(agent => userAgent.toLowerCase().includes(agent))) {
     // Log para monitoreo (puedes integrar con tu sistema de logs)
     console.warn(`Suspicious User-Agent detected: ${userAgent}`);
+    // No bloquear, solo registrar
   }
   
   // Verificar tamaño de headers para prevenir ataques de header injection
   const headerSize = Array.from(request.headers.entries())
     .reduce((size, [key, value]) => size + key.length + value.length, 0);
   
-  if (headerSize > 8192) { // 8KB límite
+  if (headerSize > 16384) { // 16KB límite (aumentado para acomodar tokens largos)
     console.error('Request headers too large');
     return false;
   }
   
-  // Verificar headers maliciosos comunes
+  // Verificar headers maliciosos comunes - más permisivo
   const maliciousHeaders = [
-    'x-forwarded-host',
     'x-original-url',
     'x-rewrite-url'
   ];
   
+  // x-forwarded-host es común en proxies, no lo bloqueamos
   for (const header of maliciousHeaders) {
     if (request.headers.has(header)) {
       console.warn(`Potentially malicious header detected: ${header}`);
-      // Puedes decidir si bloquear o solo registrar
+      // Solo registrar, no bloquear
     }
   }
   
@@ -153,10 +191,24 @@ export function validateRequestHeaders(request: NextRequest): boolean {
 const requestCounts = new Map<string, { count: number; resetTime: number }>();
 
 export function checkRateLimit(request: NextRequest): boolean {
+  // Excluir rutas de reCAPTCHA y PILA del rate limiting
+  const excludedPaths = [
+    'recaptcha',
+    '/api/pila/',
+    '/api/documentos/'
+  ];
+  
+  if (excludedPaths.some(path => request.nextUrl.pathname.includes(path))) {
+    return true;
+  }
+  
   const ip = request.ip || request.headers.get('x-forwarded-for') || 'unknown';
   const now = Date.now();
   const windowMs = 60 * 1000; // 1 minuto
-  const maxRequests = 100; // 100 requests por minuto
+  // Usar variable de entorno para el límite de requests si está disponible
+  const maxRequests = process.env.RATE_LIMIT_MAX_REQUESTS 
+    ? parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) 
+    : 100; // 100 requests por minuto por defecto
   
   const record = requestCounts.get(ip);
   

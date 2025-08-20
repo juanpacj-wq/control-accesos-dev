@@ -33,8 +33,12 @@ interface DashboardContextType {
   setCurrentVehiculo: (vehiculo: VehiculoRegistro | null) => void
   isCargaMasivaOpen: boolean
   setIsCargaMasivaOpen: (open: boolean) => void
+  isPILAOpen: boolean
+  setIsPILAOpen: (open: boolean) => void
   showCargaMasivaSuccess: boolean
   setShowCargaMasivaSuccess: (show: boolean) => void
+  showPILASuccess: boolean
+  setShowPILASuccess: (show: boolean) => void
   isSolicitudTerminada: boolean
   showTerminarDialog: boolean
   setShowTerminarDialog: (open: boolean) => void
